@@ -8,8 +8,16 @@ data/
 config.yaml
 runs/
 training_images/
+train_model.py
+
+# pretrained model used to tweak params during training, never used in predicting
+yolov8s.pt
 
 # imageRenamer.py was just a tool, not relevant to the actual program
 imageRenamer.py
+
+# do not include .png files as they are just for testing
+*.png
+
 
 
