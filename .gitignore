@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+*.log
+
+# do not include data as the model has already been trained
+data/
+config.yaml
+runs/
+training_images/
+
+# imageRenamer.py was just a tool, not relevant to the actual program
+imageRenamer.py
+
+
