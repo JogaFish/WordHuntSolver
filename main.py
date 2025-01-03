@@ -1,9 +1,13 @@
 import cv2
 from ultralytics import YOLO
 import easyocr
+import numpy as np
 
-# load the model
+# load yolo model
 yolo = YOLO("predict_model.pt")
+
+# load OCR reader model
+reader = easyocr.Reader(['en'])
 
 # this is using yolo prediction to show the frames, used for testing
 # results = yolo.predict(source=0, show=True)
@@ -19,11 +23,9 @@ def getColours(cls_num):
     elif cls_num == 1:
         return 0, 255, 0        # Green for letterboxes
     else:
-        # Default color if an unknown class is encountered
-        return 128, 128, 128    # Gray
+        return 0, 0, 0    # Return gray for unknown class number input
 
 
-# Initialize counter for saved images
 image_counter = 0
 
 while True:
@@ -32,6 +34,7 @@ while True:
         continue
 
     results = yolo.track(frame, stream=True)
+    letters = []
 
     for result in results:
         # get the classes names
@@ -40,40 +43,48 @@ while True:
         # iterate over each box
         for box in result.boxes:
             # check if confidence is greater than 40 percent
-            if box.conf[0] > 0.4:
-                # get coordinates
+            if box.conf[0] > 0.70:
+                # get coordinates and convert to integers
                 [x1, y1, x2, y2] = box.xyxy[0]
-                # convert to int
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
-                # get the class
+                # get the class, name and colour
                 cls = int(box.cls[0])
-
-                # get the class name
                 class_name = classes_names[cls]
-
-                # get the respective colour
                 colour = getColours(cls)
 
-                # draw the rectangle
-                cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 2)
+                if cls == 1:
+                    # Crop the detected object
+                    cropped_object = frame[y1:y2, x1:x2]
 
-                # put the class name and confidence on the image
-                cv2.putText(frame, f'{classes_names[int(box.cls[0])]} {box.conf[0]:.2f}', (x1, y1),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
+                    # Save the cropped image
+                    if cropped_object.size > 0:                 # Check to ensure cropping was successful
+                        img_path = f'temp_img_{image_counter}.png'
+                        cv2.imwrite(img_path, cropped_object)
+                        ocr_result = reader.readtext(img_path, low_text=0.3, contrast_ths=0.5,
+                                                     allowlist=['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
+                                                                'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
+                                                                'U', 'V', 'W', 'X', 'Y', 'Z'])
+                        image_counter += 1
+                        if ocr_result:
+                            conf = ocr_result[0][2]
+                            letter = ocr_result[0][1]
+                            letters += letter
 
-                # Crop the detected object
-                cropped_object = frame[y1:y2, x1:x2]
+                            # draw the rectangle
+                            cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 2)
 
-                # Save the cropped image
-                if cropped_object.size > 0:  # Check to ensure cropping was successful
-                    image_path = f'detected_object_{image_counter}.png'
-                    cv2.imwrite(image_path, cropped_object)
-                    print(f'Saved: {image_path}')
-                    image_counter += 1
+                            # put the class name and confidence on the image
+                            # cv2.putText(frame, f'{letter} {conf:.2f}', (x1, y1),
+                            #             cv2.FONT_HERSHEY_SIMPLEX, 1, colour, 2)
+                        else:
+                            colour = getColours(-1)
+                            cv2.rectangle(frame, (x1, y1), (x2, y2), colour, 2)
+                            continue
 
     # show the image
     cv2.imshow('frame', frame)
+    print(letters)
 
     # break the loop if 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -85,14 +96,6 @@ cv2.destroyAllWindows()
 
 
 
-
-
-
-reader = easyocr.Reader(['en'])  # specify the language
-result = reader.readtext('image.jpg')
-
-for (bbox, text, prob) in result:
-    print(f'Text: {text}, Probability: {prob}')
 
 
 

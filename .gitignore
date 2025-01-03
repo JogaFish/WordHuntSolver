@@ -8,7 +8,12 @@ data/
 config.yaml
 runs/
 training_images/
+
 train_model.py
+
+# same for ocr, no need to include training data
+ocr_data/
+train_ocr_model.py
 
 # pretrained model used to tweak params during training, never used in predicting
 yolov8s.pt
